@@ -340,19 +340,67 @@ function restart() {
   render();
 }
 
-function saveImage() {
+function isMobileDevice() {
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) return true;
+  // iPadOS 13+ 預設會把 UA 偽裝成 Mac，用觸控點數輔助判斷是不是 iPad。
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  return false;
+}
+
+async function saveImage() {
   const card = $("resultCard");
+  const filename = "engineering_philosophy_test_result.png";
   card.classList.add("capturing");
-  html2canvas(card, {backgroundColor: "#171d23", scale: 2}).then(canvas => {
+  let canvas;
+  try {
+    canvas = await html2canvas(card, {backgroundColor: "#171d23", scale: 2});
+  } catch (err) {
+    alert("儲存圖片失敗：" + err.message);
+    return;
+  } finally {
     card.classList.remove("capturing");
+  }
+
+  if (!isMobileDevice()) {
+    // 電腦版：維持原本行為，直接觸發下載。
     const link = document.createElement("a");
-    link.download = ($("resultTitle").textContent || "result") + ".png";
+    link.download = filename;
     link.href = canvas.toDataURL("image/png");
     link.click();
-  }).catch(err => {
-    card.classList.remove("capturing");
-    alert("儲存圖片失敗：" + err.message);
-  });
+    return;
+  }
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) { alert("儲存圖片失敗，請改用截圖。"); return; }
+
+    // 手機瀏覽器（iOS Safari 等）大多不支援 <a download>，優先用原生分享／
+    // 儲存面板，讓使用者能直接存到相簿。
+    if (navigator.canShare) {
+      const file = new File([blob], filename, {type: "image/png"});
+      if (navigator.canShare({files: [file]})) {
+        try {
+          await navigator.share({files: [file], title: filename});
+          return;
+        } catch (err) {
+          if (err.name === "AbortError") return; // 使用者自己取消分享，不算失敗
+        }
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    if (typeof link.download === "undefined") {
+      // 連 <a download> 都不支援的舊瀏覽器，開新分頁讓使用者長按圖片儲存。
+      window.open(url, "_blank");
+    } else {
+      link.download = filename;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }, "image/png");
 }
 
 render();
