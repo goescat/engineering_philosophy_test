@@ -3,17 +3,14 @@
 一個單一 HTML 檔案的工程哲學測驗小遊戲：回答 21 題「二選一」的架構／工程
 價值觀問題，最後得出 8 種工程哲學角色之一。
 
-## 怎麼開啟
-
-直接雙擊 `index.html`，或用瀏覽器打開即可，不需要安裝任何東西、不需要伺服器。
-整個網站（含 8 張人物圖片）都內嵌在這單一檔案裡，離線也能用。
+## 這裡直接玩
+https://goescat.github.io/engineering_philosophy_test/
 
 ## 專案結構
 
 ```
 engineering_philosophy_test/
 ├── index.html   # 網站本體（HTML + CSS + JS + 8 張人物圖片 base64，全部塞在一起）
-├── img/         # 8 張人物原始 PNG（僅供保存/替換用，index.html 已內嵌 base64，不會讀這個資料夾）
 └── README.md
 ```
 
