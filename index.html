@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>軟體架構 21 問</title>
+<style>
+:root{--bg:#0b0d10;--panel:#12161b;--panel2:#181d23;--text:#f3f5f7;--muted:#9aa4af;--line:#2a3139;--accent:#d7ff4f;--accent2:#8bd3ff}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% -10%,#202832 0,#0b0d10 45%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif;min-height:100vh}
+.container{width:min(760px,calc(100% - 32px));margin:auto;padding:42px 0 70px} .hero{text-align:center;padding:28px 0 34px}
+.eyebrow{font-size:12px;letter-spacing:.2em;color:var(--accent);font-weight:700} h1{font-size:clamp(34px,8vw,58px);line-height:1.05;margin:15px 0 12px;letter-spacing:-.04em}
+.subtitle{color:var(--muted);font-size:16px;line-height:1.7} .progress-wrap{margin:8px 0 28px}
+.progress-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-bottom:9px} .progress{height:5px;background:#252b32;border-radius:99px;overflow:hidden}
+.progress>div{height:100%;background:var(--accent);transition:.35s;width:0} .section{color:var(--accent2);font-size:13px;font-weight:800;letter-spacing:.12em;margin-bottom:9px}
+.question{font-size:28px;line-height:1.35;margin:0 0 8px} .context{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:22px}
+.options{display:grid;gap:12px} .option{border:1px solid var(--line);background:rgba(18,22,27,.9);border-radius:16px;padding:19px;text-align:left;color:var(--text);cursor:pointer;transition:.2s}
+.option:hover{border-color:#66717d;transform:translateY(-1px);background:var(--panel2)} .option .tag{display:inline-block;color:var(--accent);font-weight:900;margin-right:10px}
+.option strong{font-size:16px} .option p{margin:9px 0 0;color:#b5bec8;line-height:1.65;font-size:14px} .hint{margin-top:22px;text-align:center;color:#69737e;font-size:12px}
+.result{display:none} .result.show{display:block} .result-card{background:linear-gradient(145deg,#171d23,#101419);border:1px solid #303943;border-radius:24px;padding:28px}
+.result-title{font-size:36px;margin:5px 0 10px} .result-desc{color:#bac2ca;line-height:1.8}
+.axes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:24px 0} .axis{background:#0c1014;border:1px solid #252c34;border-radius:14px;padding:15px}
+.axis-label{font-size:11px;color:var(--muted);margin-bottom:6px} .axis-value{font-weight:800} .bar{height:4px;background:#252c34;margin-top:8px;border-radius:9px;overflow:hidden}
+.bar div{height:100%;background:var(--accent)} .traits{display:grid;gap:10px;margin-top:20px} .trait{padding:15px;border-left:2px solid var(--accent);background:#0d1115}
+.trait b{display:block;margin-bottom:5px} .trait span{color:#aeb7c0;font-size:14px;line-height:1.6} .actions{display:flex;gap:10px;margin-top:22px}
+button{font:inherit;border:0;border-radius:12px;padding:13px 17px;cursor:pointer} .primary{background:var(--accent);color:#0a0c0e;font-weight:800} .secondary{background:#252c34;color:white}
+@media(max-width:560px){.container{padding-top:24px}.axes{grid-template-columns:1fr}.question{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="hero">
+<div class="eyebrow">ENGINEERING PHILOSOPHY TEST</div>
+<h1>軟體架構的 21 問</h1>
+<div class="subtitle"><br></div>
+</header>
+
+<main id="quiz">
+<div class="progress-wrap">
+<div class="progress-meta"><span id="sectionName">架構信仰</span><span id="count">01 / 21</span></div>
+<div class="progress"><div id="progressBar"></div></div>
+</div>
+<section>
+<div class="section" id="section"></div>
+<h2 class="question" id="question"></h2>
+<div class="context" id="context"></div>
+<div class="options" id="options"></div>
+<div class="hint">選擇「比較像你」的答案，不需要選你認為比較正確的。</div>
+</section>
+</main>
+
+<main class="result" id="result">
+<div class="result-card">
+<div class="eyebrow">YOUR ENGINEERING PHILOSOPHY</div>
+<h2 class="result-title" id="resultTitle"></h2>
+<p class="result-desc" id="resultDesc"></p>
+<div class="axes" id="axes"></div>
+<div class="traits" id="traits"></div>
+<div class="actions">
+<button class="primary" onclick="restart()">再測一次</button>
+<button class="secondary" onclick="copyResult()">複製結果</button>
+</div>
+</div>
+</main>
+</div>
+
+<script>
+"use strict";
+
+const questions = [
+{s:"架構信仰",q:"系統應該拆多細？",c:"「隔離複雜度」vs.「控制複雜度」",a:["Microservices","服務應該有清楚的邊界，各自獨立、各自演化。"],b:["Monolith","能放在一起就不要硬拆，複雜度本身就是成本。"]},
+{s:"架構信仰",q:"資料庫應該相信 Schema 嗎？",c:"「確定性」vs.「彈性」",a:["SQL","資料結構就是契約。Schema 應該被嚴格管理。"],b:["NoSQL","世界會變，資料模型也會變。不要讓 Schema 綁死系統。"]},
+{s:"架構信仰",q:"資料一致性值得付出多少代價？",c:"「正確」vs.「可用」",a:["Strong Consistency","使用者看到的資料，就應該是正確的。"],b:["Eventual Consistency","若能換取效能、可用性與擴展性，短暫不一致可以接受。"]},
+{s:"架構信仰",q:"你相信 Cache 嗎？",c:"「效能優化」vs.「系統簡潔」",a:["Cache","能減少昂貴操作，就應該把結果留下來。"],b:["Don't Cache","Cache 帶來 invalidation、staleness 與一致性問題，沒有必要不要加。"]},
+{s:"開發信仰",q:"API 應該怎麼設計？",c:"「約束」vs.「自由」",a:["REST","API 越簡單、越符合既有 Web 思維越好。"],b:["GraphQL","Client 需要什麼資料，就讓 Client 自己決定。"]},
+{s:"開發信仰",q:"程式應該先寫測試嗎？",c:"「設計驅動」vs.「實作驅動」",a:["TDD","先定義行為，再寫實作。測試本身就是設計工具。"],b:["Test After","先把問題解決，再決定哪些地方值得測。"]},
+{s:"開發信仰",q:"你相信抽象嗎？",c:"「設計未來」vs.「服務現在」",a:["Clean Architecture / DDD","建立好的 Domain Model 與抽象，讓系統可以長期演化。"],b:["Pragmatism / CRUD","不要為不存在的問題建立抽象。能解決現在的問題比較重要。"]},
+{s:"工程信仰",q:"你會自己造輪子嗎？",c:"「控制權」vs.「效率」",a:["Build","現成方案不一定符合需求，核心能力應該掌握在自己手上。"],b:["Buy","能買就不要自己養。工程師的時間也是成本。"]},
+{s:"工程信仰",q:"你相信文件嗎？",c:"「顯性知識」vs.「程式自解釋」",a:["Documentation","沒有文件，知識就只存在某個人的腦袋裡。"],b:["Code is Documentation","如果 Code 需要大量文件才能理解，那可能是 Code 寫得不夠好。"]},
+{s:"工程信仰",q:"系統出問題時，你首先看什麼？",c:"「全面掌控」vs.「足夠就好」",a:["Observability","Metrics、Logs、Traces 都要有，系統應該能告訴我們自己發生什麼事。"],b:["Logging","先把重要的東西 Log 出來。不要為了 Observability 把系統搞得更複雜。"]},
+{s:"工程信仰",q:"系統 99.99% 可用，但成本很高",c:"「Reliability」vs.「Economics」",a:["維持","Reliability 是產品的一部分，不能輕易犧牲。"],b:["降級","如果使用者根本感受不到差異，為什麼要花這麼多錢？"]},
+{s:"人生信仰",q:"三年後的問題，現在要處理嗎？",c:"「預見未來」vs.「活在當下」",a:["Future-proof","如果知道系統未來會遇到問題，現在就應該留下演化空間。"],b:["YAGNI","三年後的需求誰知道？先把今天的問題做好。"]},
+{s:"人生信仰",q:"技術債怎麼辦？",c:"「長期主義」vs.「現實主義」",a:["Pay the Debt","技術債也是債。一直往後拖，只會讓未來更痛苦。"],b:["Business First","如果這筆債能換來產品速度，就不一定需要現在償還。"]},
+{s:"人生信仰",q:"知道更好的解法，但現在的解法已經能用了？",c:"「理想主義」vs.「務實主義」",a:["Rewrite","既然知道問題，就應該修正它。"],b:["Leave It","「更好」不代表「值得」。只要現況還能創造價值，就不要為了理想破壞穩定。"]},
+{s:"開發信仰",q:"效能問題出現了，你會？",c:"「Data」vs.「Intuition」",a:["先量測","沒有 profiling 和數據，所謂的效能優化可能只是心理安慰。"],b:["先優化","使用者已經感受到問題，先把效能拉起來再說。"]},
+{s:"架構信仰",q:"需求一直變，你會怎麼做？",c:"你願意為未知付多少錢？",a:["設計彈性","既然需求一定會變，就應該從架構上保留變化的空間。"],b:["接受重構","不需要為未知需求過度設計，真的變了再重構。"]},
+{s:"開發信仰",q:"Legacy Code 要不要重寫？",c:"「革命」vs.「演化」",a:["Rewrite","如果架構已經爛到影響開發速度，就應該重新設計。"],b:["Refactor","Legacy Code 也是業務知識的載體，能漸進式改善就不要全部推倒。"]},
+{s:"工程信仰",q:"Code Review 發現一個小問題，但不影響功能",c:"「標準一致性」vs.「團隊效率」",a:["一定要求修改","既然規範存在，就應該維持一致性，避免小問題逐漸累積。"],b:["看情況","如果不影響功能，就要衡量修改成本，避免浪費大家時間。"]},
+{s:"工程信仰",q:"一個技術方案只有你最熟",c:"「個人技術優勢」vs.「團隊韌性」",a:["繼續用","只要它真的好，不能因為別人不熟就放棄。"],b:["換成熟技術","團隊 Bus Factor 比個人技術優勢更重要。"]},
+{s:"開發信仰",q:"你會不會為了「未來可能需要」建立抽象？",c:"Abstraction should be earned——但有時候好的抽象確實能降低未來改動成本。",a:["會","好的抽象可以降低未來改動成本。"],b:["不會","Abstraction should be earned。先讓需求證明抽象真的值得存在。"]},
+{s:"人生信仰",q:"「看情況」是不是一種答案？",
+ c:"面對不同情境，你會更相信靈活調整，還是堅持自己的原則？",
+ a:["是","不同情境有不同解法，理解脈絡、權衡取捨，比堅持單一答案更重要。"],
+ b:["不是","即使情境不同，也應該有自己的原則與判斷標準，不能總把決定交給「看情況」。"]}
+];
+const weightMap = [
+  // Q01｜Microservices vs Monolith
+  // 核心：架構彈性 vs 秩序
+  [{flexibility:3}, {order:3}],
+
+  // Q02｜SQL vs NoSQL
+  // 核心：Schema / 契約 vs 彈性
+  [{order:3}, {flexibility:3}],
+
+  // Q03｜Strong Consistency vs Eventual Consistency
+  // 核心：正確性 / 可靠性 vs 可用性 / 經濟性
+  [{reliability:3}, {economics:3}],
+
+  // Q04｜Cache vs Don't Cache
+  // 核心：效能 / 效率 vs 簡潔 / 品質
+  [{efficiency:3}, {quality:3}],
+
+  // Q05｜REST vs GraphQL
+  // 核心：約束 / 秩序 vs 自由 / 彈性
+  [{order:2, design:1}, {flexibility:2, design:1}],
+
+  // Q06｜TDD vs Test After
+  // 核心：設計先行 vs 實用主義
+  [{design:3}, {pragmatism:3}],
+
+  // Q07｜Clean Architecture / DDD vs Pragmatism / CRUD
+  // 核心：設計未來 vs 解決現在
+  [{design:3, longterm:1}, {pragmatism:3, present:1}],
+
+  // Q08｜Build vs Buy
+  // 核心：掌握能力 vs 效率
+  [{expertise:3, resilience:1}, {efficiency:3, economics:1}],
+
+  // Q09｜Documentation vs Code is Documentation
+  // 核心：工程規範 vs 簡潔 / 效率
+  [{quality:3}, {efficiency:3}],
+
+  // Q10｜Observability vs Logging
+  // 核心：全面掌控 / 品質 vs 足夠就好 / 效率
+  [{quality:3, data:1}, {efficiency:3, intuition:0}],
+
+  // Q11｜99.99% Availability vs Cost
+  // 核心：可靠性 vs 經濟性
+  [{reliability:3}, {economics:3}],
+
+  // Q12｜Future-proof vs YAGNI
+  // 核心：長期 vs 當下
+  [{longterm:3}, {present:3}],
+
+  // Q13｜Pay the Debt vs Business First
+  // 核心：長期品質 vs 現實效益
+  [{longterm:2, quality:1}, {present:2, efficiency:1}],
+
+  // Q14｜Rewrite vs Leave It
+  // 核心：理想 / 改變 vs 務實 / 穩定
+  [{revolution:2, design:1}, {evolution:2, pragmatism:1}],
+
+  // Q15｜先量測 vs 先優化
+  // 核心：Data vs Intuition
+  [{data:3}, {intuition:3}],
+
+  // Q16｜設計彈性 vs 接受重構
+  // 核心：預先設計 vs 演化
+  [{flexibility:2, longterm:1}, {evolution:2, present:1}],
+
+  // Q17｜Rewrite vs Refactor
+  // 核心：革命 vs 演化
+  [{revolution:3}, {evolution:3}],
+
+  // Q18｜Code Review 小問題
+  // 核心：標準一致性 vs 團隊效率
+  [{quality:3, order:1}, {efficiency:3, flexibility:1}],
+
+  // Q19｜只有你最熟的技術
+  // 核心：個人專業 vs 團隊韌性
+  [{expertise:3, longterm:1}, {resilience:3, present:0}],
+
+  // Q20｜為未來可能需要建立抽象
+  // 核心：設計未來 vs 實用主義
+  [{design:3, longterm:1}, {pragmatism:3, present:1}],
+
+  // Q21｜「看情況」是不是一種答案？
+  // 核心：情境主義 vs 原則主義
+  [{pragmatism:2, efficiency:1}, {quality:2, design:1}]
+];
+
+const dimensions = {
+  // 秩序／彈性
+  order:0, flexibility:0,
+  // 設計／務實
+  design:0, pragmatism:0,
+  // 數據/直覺
+  data:0, intuition:0,
+  // 品質/效率
+  quality:0, efficiency:0,
+  // 演進 / 革新
+  evolution:0, revolution:0,
+  // 專業 / 韌性
+  expertise:0, resilience:0,
+  // 長期 /當下
+  longterm:0, present:0,
+  // 可靠 / 效益
+  reliability:0, economics:0,
+};
+
+let current = 0;
+const answers = [];
+const $ = id => document.getElementById(id);
+
+const profiles = {
+  "帝國建築師": {
+    name:"帝國建築師",
+    desc:"你相信好的系統應該被精心設計。不只要能跑，還要能被理解、被維護、被延續。你對架構、品質與長期演化有很高要求。",
+    traits:[["你相信","系統應該有清楚的邊界、契約與設計。"],["你最討厭","「先做再說，反正之後再重構。」"],["你的超能力","能把混亂的問題整理成可長期維護的系統。"],["你的弱點","可能為了理想架構付出過高的複雜度成本。"]]
+  },
+  "務實征服者": {
+    name:"務實征服者",
+    desc:"你相信工程的目的不是建造藝術品，而是持續創造價值。你可以接受醜，但不能接受沒有價值的複雜。",
+    traits:[["你相信","先解決真正的問題，再談漂亮的架構。"],["你最常說","「這個真的需要嗎？」"],["你的超能力","快速辨認 Over-engineering。"],["你的弱點","可能低估未來的演化成本。"]]
+  },
+  "演化主義者": {
+    name:"演化主義者",
+    desc:"你不追求一次把系統設計完，而是設計一個能持續演化的系統。你重視邊界、抽象與可觀測性，但不迷信一次到位。",
+    traits:[["你相信","Architecture should enable change."],["你最討厭","為了短期方便把未來鎖死。"],["你的超能力","看見系統下一階段可能如何演化。"],["你的弱點","容易替未來留下太多可能性。"]]
+  },
+  "極簡主義者": {
+    name:"極簡主義者",
+    desc:"能不用就不要用，能不拆就不要拆，能不抽象就不要抽象。你把複雜度視為最昂貴的技術債。",
+    traits:[["你相信","Complexity is the enemy."],["你最常說","「現在有這個需求嗎？」"],["你的超能力","避免系統被過度工程化。"],["你的弱點","可能低估需求成長與系統演化的速度。"]]
+  },
+  "架構煉金術師": {
+    name:"架構煉金術師",
+    desc:"你對架構有高要求，但也知道工程資源有限。你不滿足於二選一，而是習慣尋找第三種解法。",
+    traits:[["你相信","最好的架構不是最漂亮，而是 trade-off 最合理。"],["你最常問","「有沒有第三種解法？」"],["你的超能力","在品質與成本之間找到平衡。"],["你的弱點","容易花太多時間尋找完美平衡。"]]
+  },
+  "產品派工程師": {
+    name:"產品派工程師",
+    desc:"技術只是手段，產品價值才是目的。你不排斥技術債，但會要求每一筆債都有清楚的回報。",
+    traits:[["你相信","Engineering exists to create value."],["你最討厭","為了工程師爽而重構。"],["你的超能力","把技術決策和商業結果連起來。"],["你的弱點","可能讓技術債累積到超過可控範圍。"]]
+  },
+  "演化實用派": {
+    name:"演化實用派",
+    desc:"你相信系統應該保持彈性，但不會為了理論上的未來過度投資。你擅長在不確定中做最小承諾。",
+    traits:[["你相信","設計是為了讓改變變便宜。"],["你的原則","先建立足夠好的邊界。"],["你的超能力","用最少的設計換取最大的未來選擇權。"],["你的弱點","可能讓團隊過度依賴個人判斷。"]]
+  },
+  "守成工程師": {
+    name:"守成工程師",
+    desc:"你重視穩定、可預期與可維護性，同時不喜歡無謂的設計。你是大型系統裡非常可靠的那種人。",
+    traits:[["你相信","穩定本身就是產品價值。"],["你最討厭","沒有必要的技術冒險。"],["你的超能力","讓系統長期維持在可控狀態。"],["你的弱點","可能對新技術與大幅重構過於保守。"]]
+  }
+};
+
+function applyWeights(choice) {
+  const weights = weightMap[current][choice ? 0 : 1];
+  Object.entries(weights).forEach(([key,value]) => dimensions[key] += value);
+}
+
+function render() {
+  const q = questions[current];
+  $("sectionName").textContent = q.s;
+  $("count").textContent = String(current + 1).padStart(2,"0") + " / " + questions.length;
+  $("progressBar").style.width = (current / (questions.length - 1) * 100) + "%";
+  $("section").textContent = q.s.toUpperCase();
+  $("question").textContent = q.q;
+  $("context").textContent = q.c;
+
+  $("options").innerHTML = "";
+  [["A",q.a],["B",q.b]].forEach(([letter,opt],idx) => {
+    const button = document.createElement("button");
+    button.className = "option";
+    button.innerHTML = '<span class="tag">▣ ' + letter + '</span><strong>' + opt[0] + '</strong><p>' + opt[1] + '</p>';
+    button.onclick = () => choose(idx === 0);
+    $("options").appendChild(button);
+  });
+}
+
+function choose(isA) {
+  applyWeights(isA);
+  answers.push(isA ? "A" : "B");
+  if (current < questions.length - 1) {
+    current++;
+    render();
+  } else {
+    finish();
+  }
+}
+
+function getProfile() {
+  const d = dimensions;
+  const arch = d.flexibility >= d.order ? "彈性" : "秩序";
+  const dev = d.design >= d.pragmatism ? "設計" : "實用";
+  const eng = d.quality >= d.efficiency ? "品質" : "效率";
+  const life = d.longterm >= d.present ? "長期" : "現實";
+
+  if (arch==="彈性" && dev==="實用" && eng==="效率" && life==="現實") return profiles["極簡主義者"];
+  if (arch==="秩序" && dev==="設計" && eng==="品質" && life==="長期") return profiles["帝國建築師"];
+  if (arch==="彈性" && dev==="設計" && eng==="品質" && life==="長期") return profiles["演化主義者"];
+  if (arch==="秩序" && dev==="實用" && eng==="效率" && life==="現實") return profiles["務實征服者"];
+  if (d.context + d.data > d.principle + d.intuition && d.quality > d.efficiency) return profiles["架構煉金術師"];
+  if (d.pragmatism > d.design && d.efficiency > d.quality && d.present > d.longterm) return profiles["產品派工程師"];
+  if (d.resilience > d.expertise && d.evolution > d.revolution) return profiles["守成工程師"];
+  return profiles["演化實用派"];
+}
+
+function finish() {
+  $("quiz").style.display = "none";
+  $("result").classList.add("show");
+
+  const profile = getProfile();
+  $("resultTitle").textContent = profile.name;
+  $("resultDesc").textContent = profile.desc;
+
+  const axes = [
+    ["架構觀","秩序","彈性",dimensions.order,dimensions.flexibility],
+    ["開發觀","設計","實用",dimensions.design,dimensions.pragmatism],
+    ["決策觀","數據","直覺",dimensions.data,dimensions.intuition],
+    ["工程觀","品質","效率",dimensions.quality,dimensions.efficiency],
+    ["變化觀","演化","革命",dimensions.evolution,dimensions.revolution],
+    ["組織觀","個人專業","團隊韌性",dimensions.expertise,dimensions.resilience],
+    ["時間觀","長期","當下",dimensions.longterm,dimensions.present],
+    ["商業觀","可靠性","經濟性",dimensions.reliability,dimensions.economics]
+  ];
+
+  $("axes").innerHTML = axes.map(([label,left,right,l,r]) => {
+    const total = Math.max(1, Math.abs(l) + Math.abs(r));
+    const rightPct = Math.round(r / total * 100);
+    const leftPct = 100 - rightPct;
+    return '<div class="axis"><div class="axis-label">' + label + '</div>' +
+      '<div class="axis-value">' + left + ' <span style="color:#69737e">↔</span> ' + right + '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:#69737e;margin-top:8px"><span>' +
+      leftPct + '%</span><span>' + rightPct + '%</span></div>' +
+      '<div class="bar"><div style="width:' + rightPct + '%"></div></div></div>';
+  }).join("");
+
+  $("traits").innerHTML = profile.traits.map(t =>
+    '<div class="trait"><b>' + t[0] + '</b><span>' + t[1] + '</span></div>'
+  ).join("");
+}
+
+function restart() {
+  current = 0;
+  Object.keys(dimensions).forEach(key => dimensions[key] = 0);
+  answers.length = 0;
+  $("result").classList.remove("show");
+  $("quiz").style.display = "block";
+  render();
+}
+
+function copyResult() {
+  const title = $("resultTitle").textContent;
+  const desc = $("resultDesc").textContent;
+  const axisText = Array.from(document.querySelectorAll(".axis")).map(x => x.innerText).join("\n");
+  const text = '我的技術信仰是「' + title + '」\n' + desc + '\n\n' + axisText;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => alert("結果已複製！"));
+  } else {
+    alert(text);
+  }
+}
+
+render();
+</script>
+</body>
+</html>
