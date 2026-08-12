@@ -108,7 +108,8 @@ const questions = [
  b:["不是","即使情境不同，也應該有自己的原則與判斷標準，不能總把決定交給「看情況」。"]}
 ];
 // 每題只計入單一軸，兩個選項一律同權重（對稱），避免權重互相汙染或偏向其中一端。
-// 8 軸配題數：架構觀/開發觀/工程觀/時間觀/決策觀 各 3 題，組織觀/商業觀/變化觀 各 2 題。
+// 8 軸配題數：架構觀/開發觀/工程觀/時間觀/決策觀/商業觀 各 3 題，變化觀 2 題，組織觀 1 題。
+// 人格判定只用架構觀×開發觀×商業觀（3 題都是單數，不會打平），其餘軸只作為結果頁的展示分數。
 const weightMap = [
   // Q01｜Microservices vs Monolith ── 架構觀：彈性 vs 秩序
   [{flexibility:3}, {order:3}],
@@ -131,8 +132,8 @@ const weightMap = [
   // Q07｜Clean Architecture / DDD vs Pragmatism / CRUD ── 開發觀：設計 vs 實用
   [{design:3}, {pragmatism:3}],
 
-  // Q08｜Build vs Buy ── 組織觀：個人專業 vs 團隊韌性
-  [{expertise:3}, {resilience:3}],
+  // Q08｜Build vs Buy ── 商業觀：可靠性（掌控）vs 經濟性（省成本）
+  [{reliability:3}, {economics:3}],
 
   // Q09｜Documentation vs Code is Documentation ── 工程觀：品質 vs 效率
   [{quality:3}, {efficiency:3}],
@@ -275,21 +276,22 @@ function choose(isA) {
   }
 }
 
+// 人格判定：架構觀×開發觀×商業觀，2x2x2 = 8 種互斥組合，一組對一個人格，
+// 三個軸各由 3 題單數決定（不會打平），理論上每個人格出現機率都是 1/8。
 function getProfile() {
   const d = dimensions;
-  const arch = d.flexibility >= d.order ? "彈性" : "秩序";
-  const dev = d.design >= d.pragmatism ? "設計" : "實用";
-  const eng = d.quality >= d.efficiency ? "品質" : "效率";
-  const life = d.longterm >= d.present ? "長期" : "現實";
+  const arch = d.flexibility > d.order ? "彈性" : "秩序";
+  const dev = d.design > d.pragmatism ? "設計" : "實用";
+  const biz = d.reliability > d.economics ? "可靠" : "經濟";
 
-  if (arch==="彈性" && dev==="實用" && eng==="效率" && life==="現實") return profiles["極簡主義者"];
-  if (arch==="秩序" && dev==="設計" && eng==="品質" && life==="長期") return profiles["帝國建築師"];
-  if (arch==="彈性" && dev==="設計" && eng==="品質" && life==="長期") return profiles["演化主義者"];
-  if (arch==="秩序" && dev==="實用" && eng==="效率" && life==="現實") return profiles["務實征服家"];
-  if (d.reliability > d.economics && d.quality > d.efficiency) return profiles["架構煉金術師"];
-  if (d.pragmatism > d.design && d.economics > d.reliability && d.present > d.longterm) return profiles["產品戰略家"];
-  if (d.resilience > d.expertise && d.evolution > d.revolution) return profiles["堡壘守護者"];
-  return profiles["演化實用派"];
+  if (arch==="秩序" && dev==="設計" && biz==="可靠") return profiles["帝國建築師"];
+  if (arch==="彈性" && dev==="設計" && biz==="可靠") return profiles["演化主義者"];
+  if (arch==="彈性" && dev==="實用" && biz==="經濟") return profiles["極簡主義者"];
+  if (arch==="秩序" && dev==="實用" && biz==="經濟") return profiles["務實征服家"];
+  if (arch==="秩序" && dev==="設計" && biz==="經濟") return profiles["架構煉金術師"];
+  if (arch==="彈性" && dev==="設計" && biz==="經濟") return profiles["產品戰略家"];
+  if (arch==="秩序" && dev==="實用" && biz==="可靠") return profiles["堡壘守護者"];
+  return profiles["演化實用派"]; // 彈性,實用,可靠
 }
 
 function finish() {
