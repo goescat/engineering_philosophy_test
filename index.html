@@ -45,7 +45,7 @@ button{font:inherit;border:0;border-radius:12px;padding:13px 17px;cursor:pointer
 
 <main id="quiz">
 <div class="progress-wrap">
-<div class="progress-meta"><span id="sectionName">架構信仰</span><span id="count">01 / 21</span></div>
+<div class="progress-meta"><span id="sectionName">進度</span><span id="count">01 / 21</span></div>
 <div class="progress"><div id="progressBar"></div></div>
 </div>
 <section>
@@ -107,7 +107,7 @@ const questions = [
 {s:"工程信仰",q:"你會自己造輪子嗎？",c:"「控制權」vs.「效率」",a:["Build","現成方案不一定符合需求，核心能力應該掌握在自己手上。"],b:["Buy","能買就不要自己養。工程師的時間也是成本。"]},
 {s:"工程信仰",q:"你相信文件嗎？",c:"「顯性知識」vs.「程式自解釋」",a:["Documentation","沒有文件，知識就只存在某個人的腦袋裡。"],b:["Code is Documentation","如果 Code 需要大量文件才能理解，那可能是 Code 寫得不夠好。"]},
 {s:"工程信仰",q:"系統出問題時，你首先看什麼？",c:"「全面掌控」vs.「足夠就好」",a:["Observability","Metrics、Logs、Traces 都要有，系統應該能告訴我們自己發生什麼事。"],b:["Logging","先把重要的東西 Log 出來。不要為了 Observability 把系統搞得更複雜。"]},
-{s:"工程信仰",q:"系統 99.99% 可用，但成本很高",c:"「Reliability」vs.「Economics」",a:["維持","Reliability 是產品的一部分，不能輕易犧牲。"],b:["降級","如果使用者根本感受不到差異，為什麼要花這麼多錢？"]},
+{s:"工程信仰",q:"系統 99.9999% 可用，但成本很高",c:"「Reliability」vs.「Economics」",a:["維持","Reliability 是產品的一部分，不能輕易犧牲。"],b:["降級","如果使用者根本感受不到差異，為什麼要花這麼多錢？"]},
 {s:"人生信仰",q:"三年後的問題，現在要處理嗎？",c:"「預見未來」vs.「活在當下」",a:["Future-proof","如果知道系統未來會遇到問題，現在就應該留下演化空間。"],b:["YAGNI","三年後的需求誰知道？先把今天的問題做好。"]},
 {s:"人生信仰",q:"技術債怎麼辦？",c:"「長期主義」vs.「現實主義」",a:["Pay the Debt","技術債也是債。一直往後拖，只會讓未來更痛苦。"],b:["Business First","如果這筆債能換來產品速度，就不一定需要現在償還。"]},
 {s:"人生信仰",q:"知道更好的解法，但現在的解法已經能用了？",c:"「理想主義」vs.「務實主義」",a:["Rewrite","既然知道問題，就應該修正它。"],b:["Leave It","「更好」不代表「值得」。只要現況還能創造價值，就不要為了理想破壞穩定。"]},
@@ -263,10 +263,11 @@ function applyWeights(choice) {
 
 function render() {
   const q = questions[current];
-  $("sectionName").textContent = q.s;
+  $("sectionName").textContent = "進度";
   $("count").textContent = String(current + 1).padStart(2,"0") + " / " + questions.length;
   $("progressBar").style.width = (current / (questions.length - 1) * 100) + "%";
-  $("section").textContent = q.s.toUpperCase();
+  $("section").textContent = "";
+  // $("section").textContent = q.s.toUpperCase();
   $("question").textContent = q.q;
   $("context").textContent = q.c;
 
@@ -423,7 +424,7 @@ function closeImageModal() {
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = Math.min(90, Math.round((w * h) / 18000));
+    const count = Math.min(260, Math.round((w * h) / 6000));
     pixels = Array.from({length: count}, makePixel);
   }
 
