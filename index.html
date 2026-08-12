@@ -25,6 +25,11 @@
 .bar .bar-left{height:100%;background:var(--accent2)} .bar .bar-right{height:100%;background:var(--accent)} .traits{display:grid;gap:10px;margin-top:20px} .trait{padding:15px;border-left:2px solid var(--accent);background:#0d1115}
 .trait b{display:block;margin-bottom:5px} .trait span{color:#aeb7c0;font-size:14px;line-height:1.6} .actions{display:flex;gap:10px;margin-top:22px}
 button{font:inherit;border:0;border-radius:12px;padding:13px 17px;cursor:pointer} .primary{background:var(--accent);color:#0a0c0e;font-weight:800} .secondary{background:#252c34;color:white}
+.image-modal{display:none;position:fixed;inset:0;background:rgba(6,8,10,.92);z-index:100;padding:24px;overflow-y:auto}
+.image-modal.show{display:flex;align-items:center;justify-content:center}
+.image-modal-inner{max-width:100%;text-align:center}
+.image-modal-hint{color:var(--accent);font-size:14px;font-weight:700;margin:0 0 14px}
+.image-modal-inner img{max-width:100%;max-height:70vh;border-radius:16px;border:1px solid #303943;display:block;margin:0 auto 18px}
 @media(max-width:560px){.container{padding-top:24px}.question{font-size:24px}}
 </style>
 </head>
@@ -64,6 +69,14 @@ button{font:inherit;border:0;border-radius:12px;padding:13px 17px;cursor:pointer
 </div>
 </div>
 </main>
+
+<div class="image-modal" id="imageModal">
+<div class="image-modal-inner">
+<p class="image-modal-hint">長按圖片即可儲存到相簿</p>
+<img id="modalImage" alt="測驗結果圖片">
+<button class="secondary" onclick="closeImageModal()">關閉</button>
+</div>
+</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -370,37 +383,14 @@ async function saveImage() {
     return;
   }
 
-  canvas.toBlob(async (blob) => {
-    if (!blob) { alert("儲存圖片失敗，請改用截圖。"); return; }
+  // 手機版：把圖片直接顯示在頁面上，讓使用者長按圖片用瀏覽器內建的「儲存圖片」
+  // 存到相簿。這個方式不依賴 <a download> 或分享 API 支不支援，最穩定。
+  $("modalImage").src = canvas.toDataURL("image/png");
+  $("imageModal").classList.add("show");
+}
 
-    // 手機瀏覽器（iOS Safari 等）大多不支援 <a download>，優先用原生分享／
-    // 儲存面板，讓使用者能直接存到相簿。
-    if (navigator.canShare) {
-      const file = new File([blob], filename, {type: "image/png"});
-      if (navigator.canShare({files: [file]})) {
-        try {
-          await navigator.share({files: [file], title: filename});
-          return;
-        } catch (err) {
-          if (err.name === "AbortError") return; // 使用者自己取消分享，不算失敗
-        }
-      }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    if (typeof link.download === "undefined") {
-      // 連 <a download> 都不支援的舊瀏覽器，開新分頁讓使用者長按圖片儲存。
-      window.open(url, "_blank");
-    } else {
-      link.download = filename;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-  }, "image/png");
+function closeImageModal() {
+  $("imageModal").classList.remove("show");
 }
 
 render();
